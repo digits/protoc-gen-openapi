@@ -90,8 +90,7 @@ func TestOpenAPIProtobufNaming(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run protoc and the protoc-gen-openapi plugin to generate an OpenAPI spec.
 			err := exec.Command("protoc",
-				"-I", "../../",
-				"-I", "../../third_party",
+				"-I", "third_party",
 				"-I", "examples",
 				path.Join(tt.path, tt.protofile),
 				"--openapi_out=naming=proto:.").Run()
@@ -123,10 +122,10 @@ func TestOpenAPIFQSchemaNaming(t *testing.T) {
 		t.Fatalf("create tmp directory %+v", err)
 	}
 	defer os.RemoveAll(tempDir)
+
 	// run protoc with source_relative options on all examples
 	args := []string{
-		"-I", "../../",
-		"-I", "../../third_party",
+		"-I", "third_party",
 		"-I", "examples",
 		fmt.Sprintf("--openapi_out=fq_schema_naming=1:%s/examples", tempDir),
 		"--openapi_opt=output_mode=source_relative",
@@ -148,8 +147,7 @@ func TestOpenAPIFQSchemaNaming(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run protoc and the protoc-gen-openapi plugin to generate an OpenAPI spec.
 			err := exec.Command("protoc",
-				"-I", "../../",
-				"-I", "../../third_party",
+				"-I", "third_party",
 				"-I", "examples",
 				path.Join(tt.path, tt.protofile),
 				"--openapi_out=fq_schema_naming=1:.").Run()
@@ -192,8 +190,7 @@ func TestOpenAPIJSONNaming(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run protoc and the protoc-gen-openapi plugin to generate an OpenAPI spec with JSON naming.
 			err := exec.Command("protoc",
-				"-I", "../../",
-				"-I", "../../third_party",
+				"-I", "third_party",
 				"-I", "examples",
 				path.Join(tt.path, tt.protofile),
 				"--openapi_out=version=1.2.3:.").Run()
@@ -229,8 +226,7 @@ func TestOpenAPIStringEnums(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run protoc and the protoc-gen-openapi plugin to generate an OpenAPI spec with string Enums.
 			err := exec.Command("protoc",
-				"-I", "../../",
-				"-I", "../../third_party",
+				"-I", "third_party",
 				"-I", "examples",
 				path.Join(tt.path, tt.protofile),
 				"--openapi_out=enum_type=string:.").Run()
@@ -266,8 +262,7 @@ func TestOpenAPIDefaultResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Run protoc and the protoc-gen-openapi plugin to generate an OpenAPI spec with string Enums.
 			err := exec.Command("protoc",
-				"-I", "../../",
-				"-I", "../../third_party",
+				"-I", "third_party",
 				"-I", "examples",
 				path.Join(tt.path, tt.protofile),
 				"--openapi_out=default_response=true:.").Run()
