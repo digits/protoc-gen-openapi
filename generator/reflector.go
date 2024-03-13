@@ -34,6 +34,9 @@ type OpenAPIv3Reflector struct {
 	conf Configuration
 
 	requiredSchemas []string // Names of schemas which are used through references.
+
+	existingSchemaNames []string
+	schemaKeyToName     map[string]string
 }
 
 // NewOpenAPIv3Reflector creates a new reflector.
@@ -42,6 +45,9 @@ func NewOpenAPIv3Reflector(conf Configuration) *OpenAPIv3Reflector {
 		conf: conf,
 
 		requiredSchemas: make([]string, 0),
+
+		existingSchemaNames: make([]string, 0),
+		schemaKeyToName:     make(map[string]string),
 	}
 }
 
@@ -56,10 +62,21 @@ func (r *OpenAPIv3Reflector) getMessageName(message protoreflect.MessageDescript
 	return prefix + string(message.Name())
 }
 
+func (r *OpenAPIv3Reflector) fqName(message protoreflect.MessageDescriptor) string {
+	package_name := string(message.ParentFile().Package())
+	name := r.getMessageName(message)
+	return package_name + "." + name
+}
+
 func (r *OpenAPIv3Reflector) formatMessageName(message protoreflect.MessageDescriptor) string {
 	typeName := r.fullMessageTypeName(message)
 
 	name := r.getMessageName(message)
+	key := r.fqName(message)
+	if name, ok := r.schemaKeyToName[key]; ok {
+		return name
+	}
+
 	if !*r.conf.FQSchemaNaming {
 		if typeName == ".google.protobuf.Value" {
 			name = protobufValueName
@@ -79,10 +96,16 @@ func (r *OpenAPIv3Reflector) formatMessageName(message protoreflect.MessageDescr
 	}
 
 	if *r.conf.FQSchemaNaming {
-		package_name := string(message.ParentFile().Package())
-		name = package_name + "." + name
+		return r.fqName(message)
 	}
 
+	if contains(r.existingSchemaNames, name) {
+		name = r.fqName(message)
+	} else {
+		r.existingSchemaNames = append(r.existingSchemaNames, name)
+	}
+
+	r.schemaKeyToName[key] = name
 	return name
 }
 
@@ -115,10 +138,12 @@ func (r *OpenAPIv3Reflector) responseContentForMessage(message protoreflect.Mess
 }
 
 func (r *OpenAPIv3Reflector) schemaReferenceForMessage(message protoreflect.MessageDescriptor) string {
-	schemaName := r.formatMessageName(message)
-	if !contains(r.requiredSchemas, schemaName) {
-		r.requiredSchemas = append(r.requiredSchemas, schemaName)
+	key := r.fqName(message)
+	if !contains(r.requiredSchemas, key) {
+		r.requiredSchemas = append(r.requiredSchemas, key)
 	}
+
+	schemaName := r.formatMessageName(message)
 	return "#/components/schemas/" + schemaName
 }
 
