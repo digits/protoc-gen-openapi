@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package tests.importcollision.message.v1;
+
+import "tests/importcollision/shared/types.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/digits/gnostic/apps/protoc-gen-openapi/examples/tests/importcollision/message/v1;message";
+
+service Messaging {
+  rpc CreateMessage(Message) returns (Message) {
+    option (google.api.http) = {
+      post : "/v1/messages/{message_id}"
+      body : "body_text"
+    };
+  }
+}
+
+message Message {
+    string message_id = 1;
+
+    Bar bar = 3;
+    shared.v1.Sender other_sender = 4;
+
+    Sender sender = 2;
+}
+
+message Bar {
+    string id = 1;
+    string name = 2;
+}
+
+message Sender {
+    string id = 1;
+    string name = 2;
+}

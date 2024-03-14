@@ -97,6 +97,44 @@ func (g *OpenAPIv3Generator) Run(outputFile *protogen.GeneratedFile) error {
 	return nil
 }
 
+func (g *OpenAPIv3Generator) schemaForMessage(agg []*protogen.Message, seen map[string]bool, message *protogen.Message) []*protogen.Message {
+	key := string(message.Desc.FullName())
+	if _, ok := seen[key]; ok {
+		return agg
+	} else {
+		seen[key] = true
+	}
+
+	agg = append(agg, message)
+	for _, message := range message.Messages {
+		agg = g.schemaForMessage(agg, seen, message)
+	}
+
+	for _, field := range message.Fields {
+		if field.Message != nil {
+			agg = g.schemaForMessage(agg, seen, field.Message)
+		}
+	}
+
+	return agg
+}
+
+func (g *OpenAPIv3Generator) requiredMessages() []*protogen.Message {
+	requiredMessages := make([]*protogen.Message, 0)
+	seen := make(map[string]bool)
+
+	for _, file := range g.inputFiles {
+		for _, service := range file.Services {
+			for _, method := range service.Methods {
+				requiredMessages = g.schemaForMessage(requiredMessages, seen, method.Input)
+				requiredMessages = g.schemaForMessage(requiredMessages, seen, method.Output)
+			}
+		}
+	}
+
+	return requiredMessages
+}
+
 // buildDocumentV3 builds an OpenAPIv3 document for a plugin request.
 func (g *OpenAPIv3Generator) buildDocumentV3() *v3.Document {
 	d := &v3.Document{}
@@ -115,6 +153,43 @@ func (g *OpenAPIv3Generator) buildDocumentV3() *v3.Document {
 		},
 	}
 
+	servicePkgName := ""
+	for _, file := range g.plugin.Files {
+		for _, s := range file.Services {
+			servicePkgName = string(s.Desc.ParentFile().Package())
+		}
+	}
+
+	// Sort the required schema messages so that the ones with the same package as the service
+	// come first in the list, and then alphabetically after that.
+	requiredMessages := g.requiredMessages()
+	sort.Slice(requiredMessages, func(i, j int) bool {
+		iPkg := string(requiredMessages[i].Desc.ParentFile().Package())
+		jPkg := string(requiredMessages[j].Desc.ParentFile().Package())
+
+		iHasPrefix := strings.HasPrefix(iPkg, servicePkgName)
+		jHasPrefix := strings.HasPrefix(jPkg, servicePkgName)
+
+		// If both have the prefix or neither has it, sort alphabetically
+		if iHasPrefix == jHasPrefix {
+			return string(requiredMessages[i].Desc.FullName()) < string(requiredMessages[j].Desc.FullName())
+		}
+
+		// If only one has the prefix, it should come first
+		return iHasPrefix
+	})
+
+	// Resolving the names of the required schema in order will reserve
+	// the names in a map so when they are looked up later we will be sure
+	// to resolve local messages without a prefix and the import collisions
+	// will have the package prefixed.
+	for _, m := range requiredMessages {
+		g.reflect.formatMessageName(m.Desc)
+	}
+
+	// Recursively get all of the required schemas and then add them to the document
+	// sort the required schemas so the schemas with the same package as the
+	// service get sorted first and then we can resolve the rest of the schemas
 	// Go through the files and add the services to the documents, keeping
 	// track of which schemas are referenced in the response so we can
 	// add them later.
@@ -788,11 +863,15 @@ func (g *OpenAPIv3Generator) addSchemasForMessagesToDocumentV3(d *v3.Document, m
 			g.addSchemasForMessagesToDocumentV3(d, message.Messages)
 		}
 
-		schemaName := g.reflect.formatMessageName(message.Desc)
+		key := g.reflect.fqName(message.Desc)
+		// Only generate this if we need it
+		if !contains(g.reflect.requiredSchemas, key) {
+			continue
+		}
 
-		// Only generate this if we need it and haven't already generated it.
-		if !contains(g.reflect.requiredSchemas, schemaName) ||
-			contains(g.generatedSchemas, schemaName) {
+		// Skip if we have already generated the schema
+		schemaName := g.reflect.formatMessageName(message.Desc)
+		if contains(g.generatedSchemas, schemaName) {
 			continue
 		}
 

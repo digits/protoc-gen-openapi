@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package shared.v1;
+
+option go_package = "github.com/digits/gnostic/apps/protoc-gen-openapi/examples/tests/importcollision/shared/v1;shared";
+
+message Bar {
+    string bar = 1;
+}
+
+message Sender {
+    string other_sender = 1;
+}
