@@ -182,7 +182,7 @@ func (g *OpenAPIv3Generator) buildDocumentV3() *v3.Document {
 	// Resolving the names of the required schema in order will reserve
 	// the names in a map so when they are looked up later we will be sure
 	// to resolve local messages without a prefix and the import collisions
-	// will have a the package prefixed.
+	// will have the package prefixed.
 	for _, m := range requiredMessages {
 		g.reflect.formatMessageName(m.Desc)
 	}
