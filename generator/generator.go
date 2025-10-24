@@ -441,6 +441,21 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 					},
 				})
 			return parameters
+		case ".google.type.Date":
+			fieldSchema := g.reflect.schemaOrReferenceForMessage(field.Message.Desc)
+			parameters = append(parameters,
+				&v3.ParameterOrReference{
+					Oneof: &v3.ParameterOrReference_Parameter{
+						Parameter: &v3.Parameter{
+							Name:        queryFieldName,
+							In:          "query",
+							Description: fieldDescription,
+							Required:    false,
+							Schema:      fieldSchema,
+						},
+					},
+				})
+			return parameters
 		}
 
 		if field.Desc.IsList() {
